@@ -1,0 +1,19 @@
+:3000
+
+log
+
+route {
+	mercure {
+        publisher_jwt ChangeMePleaseINeedHelpThisHurtsMySoul
+        subscriber_jwt ChangeMePleaseINeedHelpThisHurtsMySoul
+        cors_origins http://localhost http://localhost:1234
+        publish_origins http://localhost
+		demo
+		subscriptions
+	}
+
+	redir / /.well-known/mercure/ui/
+
+	respond /healthz 200
+	respond "Not Found" 404
+}

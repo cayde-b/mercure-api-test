@@ -1,0 +1,100 @@
+volumes:
+  mysql:
+    driver: local
+  import:
+    driver: local
+  mercure_data:
+    driver: local
+  mercure_config:
+    driver: local
+
+services:
+  mysql:
+    container_name: test_mysql
+    image: mysql:8.3.0-oracle
+    environment:
+      MYSQL_ROOT_PASSWORD: $MYSQL_PASSWORD
+      MYSQL_USER: $MYSQL_USER
+      MYSQL_PASSWORD: $MYSQL_PASSWORD
+      MYSQL_DATABASE: $MYSQL_DATABASE
+    volumes:
+      - mysql:/var/lib/mysql
+      - .:/app # Ensures that we have access to the app dir in case we need to import a database dump
+    healthcheck:
+      test: mysqladmin ping -h 127.0.0.1 -u $$MYSQL_USER --password=$$MYSQL_PASSWORD
+      start_period: 1s
+      interval: 1s
+      timeout: 60s
+      retries: 60
+  phpmyadmin:
+    container_name: test_phpmyadmin
+    # Do not be tempted to use fpm-alpine, for the road is dark and full of terrors.
+    # See https://github.com/phpmyadmin/docker/issues/284 and https://github.com/phpmyadmin/docker/issues/253
+    image: phpmyadmin:5.2.1-apache
+    environment:
+      PMA_HOST: $MYSQL_HOST
+      PMA_USER: $MYSQL_USER
+      PMA_PASSWORD: $MYSQL_PASSWORD
+      UPLOAD_LIMIT: 300M
+  php-fpm:
+    container_name: test_php_fpm
+    build:
+      context: .
+      dockerfile: Dockerfile.php-fpm
+      args:
+        - USER_ID=${UID}
+        - GROUP_ID=${GID}
+        - USERNAME=${USER}
+        - GROUP_NAME=${GROUP}
+    environment:
+      LISTEN_PORT: 9000
+    user: $USER
+    volumes:
+      - .:/app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: php-fpm
+    init: true
+    healthcheck:
+      test: 'php-fpm-healthcheck'
+      start_period: 1s
+      interval: 1s
+      timeout: 60s
+      retries: 120
+  nginx:
+    container_name: test_nginx
+    image: nginx:1.25.4-alpine
+    depends_on:
+      php-fpm:
+        condition: service_healthy
+    ports:
+      - 80:80
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - .:/app
+  mercure:
+    container_name: test_mercure
+    image: dunglas/mercure
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+      - "443:443"
+    environment:
+      # Uncomment the following line to disable HTTPS,
+      SERVER_NAME: http://localhost
+      MERCURE_PUBLISHER_JWT_KEY: $MERCURE_JWT_SECRET
+      MERCURE_SUBSCRIBER_JWT_KEY: $MERCURE_JWT_SECRET
+      # Set the URL of your Symfony project (without trailing slash!) as value of the cors_origins directive
+      MERCURE_EXTRA_DIRECTIVES: $MERCURE_EXTRA_DIRECTIVES
+    # Comment the following line to disable the development mode
+    command: /usr/bin/caddy run --config /etc/caddy/Caddyfile.dev --watch
+    healthcheck:
+      test: ["CMD", "curl", "-f", "https://localhost/healthz"]
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - mercure_data:/data
+      - mercure_config:/config
+      - ./bin/Caddyfile.dev:/etc/caddy/Caddyfile.dev

@@ -1,0 +1,46 @@
+FROM php:8.3-fpm-alpine
+WORKDIR /app
+
+ARG USER_ID
+ARG GROUP_ID
+ARG USERNAME
+ARG GROUP_NAME
+
+# Create the user group and user
+RUN addgroup -g $GROUP_ID $GROUP_NAME || true
+RUN adduser -D -u $USER_ID -G $GROUP_NAME $USERNAME || true
+
+RUN apk update
+
+# Install packages
+RUN apk add --no-cache \
+    zip \
+    libzip-dev \
+    libpng-dev \
+    icu-dev \
+    libxslt-dev \
+    curl \
+    bash
+
+# Install PHP extensions
+RUN docker-php-ext-configure zip
+RUN docker-php-ext-install zip intl pdo mysqli pdo_mysql calendar xsl
+
+# Increase PHP memory limit and file upload limit
+RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+RUN sed -i -e "s/^;*upload_max_filesize.*/upload_max_filesize = 1G/g" $PHP_INI_DIR/php.ini
+RUN sed -i -e "s/^;*post_max_size.*/post_max_size = 1G/g" $PHP_INI_DIR/php.ini
+RUN sed -i -e "s/^;*memory_limit.*/memory_limit = 256M/g" $PHP_INI_DIR/php.ini
+
+# Required software for the healthcheck functionality
+RUN apk add --no-cache fcgi
+
+# Enable php fpm status page
+RUN set -xe && echo "pm.status_path = /status" >> /usr/local/etc/php-fpm.d/status.conf
+
+# Disable logging of status requests, as well as index.php, so that we don't spam our Docker logs
+RUN set -xe && echo "[www]" >> /usr/local/etc/php-fpm.d/status.conf
+RUN set -xe && echo "access.suppress_path[] = /status" >> /usr/local/etc/php-fpm.d/status.conf
+RUN set -xe && echo "access.suppress_path[] = /index.php" >> /usr/local/etc/php-fpm.d/status.conf
+
+COPY ./php-fpm-healthcheck /usr/local/bin/

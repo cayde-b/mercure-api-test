@@ -1,0 +1,28 @@
+#!/bin/sh
+
+echo "Installing composer dependencies"
+bin/composer install
+
+echo "Clearing Symfony cache"
+rm -rf var/cache/* var/logs/*
+
+echo "Dropping old database"
+php bin/console doctrine:database:drop --force --quiet --no-interaction
+
+echo "Creating new database"
+php bin/console doctrine:database:create --quiet --no-interaction
+
+echo "Creating database schema"
+php bin/console doctrine:schema:create --quiet --no-interaction
+
+echo "Creating database schema for Session storage"
+php bin/console app:create-session-storage-table --quiet --no-interaction
+
+#echo "Importing fixtures"
+#php bin/console doctrine:fixtures:load --no-interaction
+
+echo "Warming up cache"
+php bin/console cache:clear --quiet --no-interaction
+php bin/console cache:warmup --quiet --no-interaction
+
+echo "Done"
