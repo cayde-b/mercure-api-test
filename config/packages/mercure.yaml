@@ -5,6 +5,6 @@ mercure:
             public_url: '%env(MERCURE_PUBLIC_URL)%'
             jwt:
                 secret: '%env(MERCURE_JWT_SECRET)%'
-                publish: '*'
+                publish: ['*']
+                subscribe: ['*']
                 provider: App\Mercure\MyTokenProvider
-                subscribe: '*'

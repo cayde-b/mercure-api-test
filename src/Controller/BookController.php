@@ -16,8 +16,8 @@ class BookController extends AbstractController
     public function publish(HubInterface $hub): Response
     {
         $update = new Update(
-            '/books',
-            json_encode(['name' => 'A really good book.', 'status' => 'toes']),
+            'books',
+            json_encode(['name' => 'A really good book.', 'status' => 'Po']),
             true
         );
 

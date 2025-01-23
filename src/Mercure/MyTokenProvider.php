@@ -26,9 +26,9 @@ final class MyTokenProvider implements TokenProviderInterface
         $now = new \DateTimeImmutable();
 
         $token = $config->builder()
-            ->issuedBy('your-issuer') // Configures the issuer (iss claim)
+            ->issuedBy('ticketing-system') // Configures the issuer (iss claim)
             ->issuedAt($now) // Configures the time that the token was issued (iat claim)
-            ->withClaim('mercure', ['publish' => ['*']]) // Configures a new claim, called "mercure"
+            ->withClaim('mercure', ['publish' => ['*'], 'subscribe' => ['*']]) // Configures a new claim, called "mercure"
             ->getToken($config->signer(), $config->signingKey());
 
         return $token->toString();
